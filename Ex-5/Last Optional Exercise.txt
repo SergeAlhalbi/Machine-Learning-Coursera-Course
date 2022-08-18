@@ -1,0 +1,87 @@
+clear ; close all; clc;
+
+load ('ex5data1.mat');
+m = size(X, 1);
+
+
+p = 8;
+
+% Map X onto Polynomial Features and Normalize
+X_poly = polyFeatures(X, p);
+[X_poly, mu, sigma] = featureNormalize(X_poly);  % Normalize
+X_poly = [ones(m, 1), X_poly];                   % Add Ones
+
+% Map X_poly_test and normalize (using mu and sigma)
+X_poly_test = polyFeatures(Xtest, p);
+X_poly_test = bsxfun(@minus, X_poly_test, mu);
+X_poly_test = bsxfun(@rdivide, X_poly_test, sigma);
+X_poly_test = [ones(size(X_poly_test, 1), 1), X_poly_test];         % Add Ones
+
+% Map X_poly_val and normalize (using mu and sigma)
+X_poly_val = polyFeatures(Xval, p);
+X_poly_val = bsxfun(@minus, X_poly_val, mu);
+X_poly_val = bsxfun(@rdivide, X_poly_val, sigma);
+X_poly_val = [ones(size(X_poly_val, 1), 1), X_poly_val];
+
+
+iter_nb = 50;
+lambda = 0.01;
+
+y_val = yval ;
+
+Xy_poly = [X_poly y];
+m_poly       = size (Xy_poly, 1);
+Xy_poly_val = [X_poly_val y_val];
+m_poly_val       = size (Xy_poly_val, 1);
+
+error_train_rand = zeros(iter_nb, m_poly);
+error_val_rand = zeros(iter_nb, m_poly);
+
+
+for i = 1:iter_nb
+
+
+  Xy_poly_rand = Xy_poly(randperm(m_poly), :);
+  X_poly_rand = Xy_poly_rand(:, 1:end-1);
+  y_poly_rand = Xy_poly_rand(:, end);
+
+  Xy_poly_val_rand = Xy_poly_val(randperm(m_poly_val), :);
+  X_poly_val_rand = Xy_poly_val_rand(1:m_poly, 1:end-1);
+  y_poly_val_rand = Xy_poly_val_rand(1:m_poly, end);
+
+
+  [theta] = trainLinearReg(X_poly_rand, y_poly_rand, lambda);
+
+  [et, ev] = learningCurve(X_poly_rand, y_poly_rand, X_poly_val_rand, y_poly_val_rand, lambda);
+
+  error_train_rand(i, :) = (et)';
+  error_val_rand(i, :) = (ev)';
+
+end
+
+error_train = (mean(error_train_rand, 1))';
+error_val = (mean(error_val_rand, 1))';
+
+
+
+
+
+
+figure(1);
+plot(X, y, 'rx', 'MarkerSize', 10, 'LineWidth', 1.5);
+plotFit(min(X), max(X), mu, sigma, theta, p);
+xlabel('Change in water level (x)');
+ylabel('Water flowing out of the dam (y)');
+title (sprintf('Polynomial Regression Fit (lambda = %f)', lambda));
+
+
+figure(2);
+plot(1:m_poly, error_train, 1:m_poly, error_val);
+
+title(sprintf('Polynomial Regression Learning Curve (lambda = %f, rand_iter= %f', lambda, rand_iter));
+xlabel('Number of training examples')
+ylabel('Error')
+axis([0 13 0 100])
+legend('Train', 'Cross Validation')
+
+
